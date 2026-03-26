@@ -656,6 +656,37 @@ def build_html(figures, summary_html, callsign):
 </html>"""
 
 
+def build_embed_html(fig, title):
+    """Build a minimal HTML page for a single chart, suitable for iframe embedding."""
+    fig_json = fig.to_json()
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ background: transparent; }}
+        #chart {{ width: 100%; }}
+    </style>
+</head>
+<body>
+    <div id="chart"></div>
+    <script>
+    (function() {{
+        var data = {fig_json};
+        data.layout.paper_bgcolor = 'rgba(0,0,0,0)';
+        data.layout.plot_bgcolor = 'rgba(0,0,0,0)';
+        data.layout.margin = {{l: 40, r: 10, t: 40, b: 10}};
+        Plotly.newPlot('chart', data.data, data.layout, {{responsive: true, displayModeBar: false}});
+    }})();
+    </script>
+</body>
+</html>"""
+
+
 def main(csv_filepath, output_dir):
     """Main: load data, generate all charts, write HTML."""
     print("Loading and processing data...")
@@ -690,6 +721,16 @@ def main(csv_filepath, output_dir):
     with open(output_path, 'w') as f:
         f.write(html)
     print(f"Saved: {output_path}")
+
+    # Generate standalone embed pages for individual charts
+    for title, fig in figures:
+        if fig is None:
+            continue
+        slug = title.lower().replace(' ', '_').replace('—', '').replace('\u2014', '')
+        embed_path = os.path.join(output_dir, f'embed_{slug}.html')
+        with open(embed_path, 'w') as f:
+            f.write(build_embed_html(fig, title))
+    print(f"Saved embed pages to {output_dir}/embed_*.html")
 
 
 if __name__ == "__main__":
