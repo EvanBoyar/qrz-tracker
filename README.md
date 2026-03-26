@@ -4,70 +4,11 @@ Tracks the cumulative lookup count on a QRZ callsign page over time and generate
 
 ## How it works
 
-`qrzLookupTracker.sh` runs hourly (or as often as you'd like) via cron. It authenticates to QRZ using a session cookie, verifies the session is valid (to avoid inflating the count with unauthenticated visits), records the current lookup count to a CSV, then regenerates all plots via `qrzHitsViz.py`.
+`qrzLookupTracker.sh` runs hourly (or as often as you'd like) via github actions. It authenticates to QRZ using a session cookie, verifies the session is valid (to avoid inflating the count with unauthenticated visits), records the current lookup count to a CSV, then regenerates all plots via `qrzHitsViz.py`.
 
-If the session expires, a `.session_invalid` sentinel is created and all further fetches are halted until the token is refreshed.
-
-## Setup
-
-1. Clone the repo and cd into it:
-   Choose where you want the repo to live locally, then open a Terminal instance there.
-   ```
-   git clone <repo-url>
-   cd qrzLookups
-   ```
-
-3. Set up a Python virtual environment and install dependencies:
-   ```
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-4. Copy `.secrets.example` to `.secrets` and fill in your values:
-   ```
-   cp .secrets.example .secrets
-   ```
-   Then edit `.secrets`:
-   ```
-   QRZ_SESSION_TOKEN=your_xf_session_token_here
-   QRZ_CALLSIGN=your_callsign_here
-   ```
-   The session token is the value of the `xf_session` cookie from a logged-in QRZ browser session.
-
-   To get that, go to [QRZ](https://www.qrz.com) and make sure you're logged in. Then, use your browser's web developer tools to view your storage for the page. Under that, there's probably a "cookies" section. Open the qrz.com one, and you'll see something that says "xf_session". There ya go! Copy that and use it as explained above.
-
-5. Make the script executable:
-   ```
-   chmod +x qrzLookupTracker.sh
-   ```
-
-6. Add a cron entry:  
-   Open crontab:
-   ```
-   crontab -e
-   ```
-   Add this to the crontab (probably scroll to the bottom and then enter it):
-   ```
-   0 */1 * * * /path/to/qrzLookups/qrzLookupTracker.sh
-   ```
-   Save the crontab (probably ```SHIFT+X```).
-
-## Files
-
-| File | Description |
-|---|---|
-| `qrzLookupTracker.sh` | Main collection script |
-| `qrzHitsViz.py` | Generates all plots from the CSV |
-| `requirements.txt` | Python dependencies |
-| `<CALLSIGN>_QRZ_stats.csv` | Collected data (timestamp, hit count) |
-| `.secrets` | Credentials — **never commit this** |
-| `.secrets.example` | Template for `.secrets` |
-| `qrzTracker.log` | Log of script runs and errors |
+If the session expires, a Github issue is raised.
 
 ## Plots generated
-
-All plots are saved to the `plots/` directory.
 
 | File | Description |
 |---|---|
@@ -81,15 +22,6 @@ All plots are saved to the `plots/` directory.
 | `polar_clock.png` | 24-hour clock plot of hourly activity |
 | `anomaly_detection.png` | Spike and quiet period detection |
 | `milestone_forecast.png` | Projected dates for future hit milestones |
-
-## Session expiry
-
-When the session expires, the script will:
-1. Log an error to `qrzTracker.log`
-2. Send a desktop notification
-3. Create `.session_invalid` to halt further fetches
-
-To resume: update `QRZ_SESSION_TOKEN` in `.secrets`, then delete `.session_invalid`.
 
 ## Thanks
 
