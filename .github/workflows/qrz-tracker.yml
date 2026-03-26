@@ -71,6 +71,8 @@ jobs:
 
       - name: Generate visualizations
         if: steps.tracker.outcome == 'success'
+        env:
+          QRZ_CALLSIGN: ${{ secrets.QRZ_CALLSIGN }}
         run: python3 qrzHitsViz.py
 
       - name: Upload Pages artifact
