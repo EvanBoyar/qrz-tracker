@@ -722,15 +722,20 @@ def main(csv_filepath, output_dir):
         f.write(html)
     print(f"Saved: {output_path}")
 
-    # Generate standalone embed pages for individual charts
+    # Generate standalone embed pages and static PNGs for each chart
     for title, fig in figures:
         if fig is None:
             continue
         slug = title.lower().replace(' ', '_').replace('—', '').replace('\u2014', '')
+
         embed_path = os.path.join(output_dir, f'embed_{slug}.html')
         with open(embed_path, 'w') as f:
             f.write(build_embed_html(fig, title))
-    print(f"Saved embed pages to {output_dir}/embed_*.html")
+
+        png_path = os.path.join(output_dir, f'{slug}.png')
+        fig.write_image(png_path, width=1400, height=600, scale=2)
+
+    print(f"Saved embed pages and PNGs to {output_dir}/")
 
 
 if __name__ == "__main__":
