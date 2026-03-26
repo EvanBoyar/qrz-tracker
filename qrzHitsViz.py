@@ -741,7 +741,7 @@ def main(csv_filepath, output_dir):
 if __name__ == "__main__":
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    csv_filename = "NR8E_QRZ_stats.csv"
+    csv_filename = f"{os.environ.get('QRZ_CALLSIGN', 'N0CALL')}_QRZ_stats.csv"
     csv_file_path = os.path.join(SCRIPT_DIR, csv_filename)
 
     # Output to _site/ for GitHub Pages deployment
