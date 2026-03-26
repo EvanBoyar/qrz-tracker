@@ -1,0 +1,85 @@
+name: QRZ Lookup Tracker
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Every hour
+  workflow_dispatch:       # Manual trigger
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  issues: write
+
+concurrency:
+  group: qrz-tracker
+  cancel-in-progress: false
+
+jobs:
+  track-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tracker
+        id: tracker
+        env:
+          QRZ_SESSION_TOKEN: ${{ secrets.QRZ_SESSION_TOKEN }}
+          QRZ_CALLSIGN: ${{ secrets.QRZ_CALLSIGN }}
+        run: |
+          bash qrzLookupTracker.sh
+        continue-on-error: true
+
+      - name: Create issue on session expiry
+        if: steps.tracker.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Ensure the label exists
+          gh label create "session-expiry" --color "d73a4a" --description "QRZ session token needs renewal" 2>/dev/null || true
+          # Check if an open session-expiry issue already exists
+          EXISTING=$(gh issue list --label "session-expiry" --state open --json number --jq 'length')
+          if [ "$EXISTING" = "0" ]; then
+            gh issue create \
+              --title "QRZ session token expired" \
+              --body "The QRZ session token is no longer valid. Update the \`QRZ_SESSION_TOKEN\` secret in repo Settings > Secrets to resume tracking." \
+              --label "session-expiry"
+          fi
+
+      - name: Commit CSV update
+        if: steps.tracker.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add *.csv
+          git diff --cached --quiet && exit 0
+          git commit -m "data: hourly QRZ lookup update"
+          git push
+
+      - name: Generate visualizations
+        if: steps.tracker.outcome == 'success'
+        run: python3 qrzHitsViz.py
+
+      - name: Upload Pages artifact
+        if: steps.tracker.outcome == 'success'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        if: steps.tracker.outcome == 'success'
+        id: deploy
+        uses: actions/deploy-pages@v4

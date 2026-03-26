@@ -1,7 +1,9 @@
 plots/
-*.csv
+_site/
 .secrets
 .session_invalid
 qrzTracker.log
 venv/
-.*/
+.*
+!.github/
+!.gitignore
