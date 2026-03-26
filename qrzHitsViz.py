@@ -565,7 +565,7 @@ def build_html(figures, summary_html, callsign):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{callsign} — QRZ Lookup Stats</title>
+    <title>{callsign} QRZ Lookup Stats</title>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
