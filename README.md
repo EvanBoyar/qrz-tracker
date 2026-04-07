@@ -1,6 +1,6 @@
 # QRZ Lookup Tracker
 
-Tracks the cumulative lookup count on a my QRZ page over time and generates visualizations. This can be useful, especially for voice operations, to see how well I'm getting out because people will often look you up without managing to make a contact with you. Made by Evan Boyar, NR8E.
+Tracks the cumulative lookup count on my QRZ page over time and generates visualizations. This can be useful, especially for voice operations, to see how well I'm getting out because people will often look you up without managing to make a contact with you. Made by Evan Boyar, NR8E.
 
 ## How it works
 
