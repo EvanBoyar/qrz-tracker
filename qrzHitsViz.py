@@ -75,7 +75,7 @@ def fig_raw_values(df):
 
 
 def fig_raw_values_log(df):
-    """Cumulative hits over time — log scale."""
+    """Cumulative hits over time, log scale."""
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['Time_UTC'], y=df['Hits'],
@@ -84,7 +84,7 @@ def fig_raw_values_log(df):
         hovertemplate='%{x|%Y-%m-%d %H:%M UTC}<br>Hits: %{y:,}<extra></extra>',
     ))
     fig.update_layout(**make_chart_layout(
-        'QRZ Profile Hits — Log Scale',
+        'QRZ Profile Hits (Log Scale)',
         xaxis_title='Date/Time (UTC)',
         yaxis_title='Hits (Log Scale)',
     ))
@@ -106,7 +106,7 @@ def fig_recent_raw_values(df, days=30):
         hovertemplate='%{x|%Y-%m-%d %H:%M UTC}<br>Hits: %{y:,}<extra></extra>',
     ))
     fig.update_layout(**make_chart_layout(
-        f'Hits — Last {days} Days',
+        f'Hits, Last {days} Days',
         xaxis_title='Date/Time (UTC)',
         yaxis_title='Hits',
     ))
@@ -264,7 +264,7 @@ def fig_contribution_calendar(df):
             month_labels_text.append(ts.strftime('%b'))
 
     fig.update_layout(
-        title=dict(text='Daily Hit Gains — Contribution Calendar (UTC)', font=dict(size=16, color='#333333')),
+        title=dict(text='Daily Hit Gains: Contribution Calendar (UTC)', font=dict(size=16, color='#333333')),
         plot_bgcolor='white',
         paper_bgcolor='white',
         yaxis=dict(
@@ -336,7 +336,7 @@ def fig_anomaly_detection(df, sigma=2):
     normal = df_rate[~df_rate['is_spike'] & ~df_rate['is_quiet']]
 
     fig = make_subplots(rows=2, cols=1, subplot_titles=[
-        f'Anomaly Detection — Rate of Change (UTC)',
+        f'Anomaly Detection: Rate of Change (UTC)',
         'Daily Gains with Spike Days Highlighted',
     ], vertical_spacing=0.12)
 
@@ -684,7 +684,7 @@ _CHART_JS = r"""
 
   function chartRawLog(d) {
     const x = d.dates.map(plotlyDateStr);
-    const layout = baseLayout('QRZ Profile Hits — Log Scale', 'Date/Time (' + tzLabel() + ')', 'Hits (Log Scale)');
+    const layout = baseLayout('QRZ Profile Hits (Log Scale)', 'Date/Time (' + tzLabel() + ')', 'Hits (Log Scale)');
     layout.yaxis.type = 'log';
     return {
       data: [{
@@ -711,7 +711,7 @@ _CHART_JS = r"""
     const yMin = Math.min.apply(null, ys);
     const yMax = Math.max.apply(null, ys);
     const pad = (yMax - yMin) * 0.05;
-    const layout = baseLayout('Hits — Last ' + days + ' Days', 'Date/Time (' + tzLabel() + ')', 'Hits');
+    const layout = baseLayout('Hits, Last ' + days + ' Days', 'Date/Time (' + tzLabel() + ')', 'Hits');
     layout.yaxis.range = [yMin - pad, yMax + pad];
     layout.yaxis.separatethousands = true;
     return {
@@ -903,7 +903,7 @@ _CHART_JS = r"""
         xgap: 2, ygap: 2
       }],
       layout: {
-        title: { text: 'Daily Hit Gains — Contribution Calendar (' + tzLabel() + ')', font: { size: 16, color: T().text }, x: 0.5, xanchor: 'center' },
+        title: { text: 'Daily Hit Gains: Contribution Calendar (' + tzLabel() + ')', font: { size: 16, color: T().text }, x: 0.5, xanchor: 'center' },
         plot_bgcolor: T().bg, paper_bgcolor: T().paper,
         font: { family: 'sans-serif', color: T().text },
         yaxis: {
@@ -1036,7 +1036,7 @@ _CHART_JS = r"""
     for (let i = 0; i < nDays; i += stepD) { tickvalsD.push(sortedDates[i]); ticktextD.push(sortedDates[i]); }
 
     const annotations = [
-      { text: 'Anomaly Detection — Rate of Change (' + tzLabel() + ')',
+      { text: 'Anomaly Detection: Rate of Change (' + tzLabel() + ')',
         showarrow: false, x: 0.5, y: 1.0, xref: 'paper', yref: 'paper',
         xanchor: 'center', yanchor: 'bottom', font: { size: 14 } },
       { text: 'Daily Gains with Spike Days Highlighted',
@@ -1218,12 +1218,12 @@ _CHART_JS = r"""
 
   function updateToggleUI() {
     const btn = document.getElementById('tz-toggle');
-    btn.textContent = useLocal ? 'Showing: Local Time — click for UTC' : 'Showing: UTC — click for Local';
+    btn.textContent = useLocal ? 'Showing: Local Time (click for UTC)' : 'Showing: UTC (click for Local)';
     let tz = '';
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) {}
     const info = document.getElementById('tz-info');
     if (useLocal) info.textContent = tz ? ('Local timezone: ' + tz) : 'Local browser time';
-    else info.textContent = tz ? ('UTC times shown — your timezone: ' + tz) : 'UTC times shown';
+    else info.textContent = tz ? ('UTC times shown, your timezone: ' + tz) : 'UTC times shown';
   }
 
   function detectInitialTheme() {
@@ -1444,7 +1444,7 @@ def build_html(summary_html, callsign, df):
     <h1>{callsign} QRZ Lookup Stats</h1>
     <div class="subtitle">Auto-updated hourly.</div>
     <div class="tz-controls">
-        <button id="tz-toggle" class="tz-toggle" type="button">Showing: UTC — click for Local</button>
+        <button id="tz-toggle" class="tz-toggle" type="button">Showing: UTC (click for Local)</button>
         <button id="theme-toggle" class="theme-toggle" type="button">Theme: Dark</button>
         <span class="tz-info" id="tz-info">UTC times shown</span>
     </div>
@@ -1455,7 +1455,7 @@ def build_html(summary_html, callsign, df):
     <div class="explainer">
         <h2>A note on DST and the Local time view</h2>
         <p>Toggling to Local time does more than rotate the hour-of-day charts. Each data point is re-binned into the wall-clock hour it actually occurred at, which means samples cross Daylight Saving Time boundaries differently depending on when they were recorded.</p>
-        <p>For example, a sample at 11:00&nbsp;UTC in August (EDT, UTC&minus;4) lands in local hour 7, while the same 11:00&nbsp;UTC in December (EST, UTC&minus;5) lands in local hour 6. So the UTC and Local hourly charts are not simple rotations of each other — the sample mix inside each bin changes. This is the intended behavior: it answers the question "what does my activity look like at 7&nbsp;AM <em>my time</em>," consistently across DST transitions.</p>
+        <p>For example, a sample at 11:00&nbsp;UTC in August (EDT, UTC&minus;4) lands in local hour 7, while the same 11:00&nbsp;UTC in December (EST, UTC&minus;5) lands in local hour 6. So the UTC and Local hourly charts are not simple rotations of each other. The sample mix inside each bin changes. This is the intended behavior: it answers the question "what does my activity look like at 7&nbsp;AM <em>my time</em>," consistently across DST transitions.</p>
     </div>
 
     <script>
@@ -1511,7 +1511,7 @@ def main(csv_filepath, output_dir):
     print("Creating interactive charts...")
     figures = [
         ('Hits Over Time', fig_raw_values(df)),
-        ('Hits — Log Scale', fig_raw_values_log(df)),
+        ('Hits (Log Scale)', fig_raw_values_log(df)),
         ('Recent Hits', fig_recent_raw_values(df)),
         ('Hourly Rate', fig_hourly_rate(df)),
         ('Activity Heatmap', fig_activity_heatmap(df)),
@@ -1535,7 +1535,7 @@ def main(csv_filepath, output_dir):
     for title, fig in figures:
         if fig is None:
             continue
-        slug = title.lower().replace(' ', '_').replace('—', '').replace('\u2014', '')
+        slug = title.lower().replace(' ', '_').replace('\u2014', '')
 
         embed_path = os.path.join(output_dir, f'embed_{slug}.html')
         with open(embed_path, 'w') as f:

@@ -23,7 +23,7 @@ log_msg() {
 notify() {
     local msg="$1"
     if [ "$CI" = "true" ]; then
-        # In CI, just log — the workflow handles Issue creation
+        # In CI, just log. The workflow handles Issue creation
         log_msg "WARN" "$msg"
     else
         local bus="/run/user/$(id -u)/bus"
@@ -36,7 +36,7 @@ notify() {
 # Check for session invalid sentinel (local only)
 if [ "$CI" != "true" ] && [ -f "$SENTINEL_FILE" ]; then
     log_msg "WARN" "Session marked invalid. Update .secrets and delete .session_invalid to resume."
-    notify "QRZ session expired — update .secrets and delete .session_invalid"
+    notify "QRZ session expired. Update .secrets and delete .session_invalid"
     exit 0
 fi
 
@@ -66,11 +66,11 @@ RESPONSE=$(curl --silent \
     -H "Cookie: xf_session=${QRZ_SESSION_TOKEN}" \
     -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0")
 
-# Verify session is authenticated — QRZ sets cs_mycs to the callsign when logged in,
+# Verify session is authenticated. QRZ sets cs_mycs to the callsign when logged in,
 # empty string when not. An unauthenticated page view inflates the lookup count.
 if echo "$RESPONSE" | grep -q 'var cs_mycs = "";'; then
-    log_msg "ERROR" "Session not authenticated — would inflate lookup count. Halting."
-    notify "QRZ session expired — update token"
+    log_msg "ERROR" "Session not authenticated. Would inflate lookup count. Halting."
+    notify "QRZ session expired. Update token"
     if [ "$CI" != "true" ]; then
         touch "$SENTINEL_FILE"
     fi
