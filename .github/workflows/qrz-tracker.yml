@@ -15,9 +15,15 @@ concurrency:
   group: qrz-tracker
   cancel-in-progress: false
 
+env:
+  # Opt JavaScript actions into Node.js 24 ahead of the 2026-06-02 forced switch
+  # so we catch any compatibility issues early. Safe to remove once Node 24 is default.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   track-and-publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
