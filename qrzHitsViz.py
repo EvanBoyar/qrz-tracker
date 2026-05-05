@@ -240,9 +240,18 @@ def fig_contribution_calendar(df):
 
     vmax = max(daily.quantile(0.95), 1)
 
+    # GitHub dark-mode-style scale: light grey for no activity, brighter greens for higher gains
+    contrib_colorscale = [
+        [0.00, '#2d2d44'],
+        [0.01, '#0e4429'],
+        [0.25, '#006d32'],
+        [0.50, '#26a641'],
+        [1.00, '#39d353'],
+    ]
+
     fig = go.Figure(data=go.Heatmap(
         x=weeks, y=days, z=colors,
-        colorscale='Greens', reversescale=True,
+        colorscale=contrib_colorscale,
         zmin=0, zmax=vmax,
         text=texts, hoverinfo='text',
         showscale=True,
