@@ -242,11 +242,11 @@ def fig_contribution_calendar(df):
 
     fig = go.Figure(data=go.Heatmap(
         x=weeks, y=days, z=colors,
-        colorscale='Greens',
+        colorscale='Greens', reversescale=True,
         zmin=0, zmax=vmax,
         text=texts, hoverinfo='text',
         showscale=True,
-        colorbar=dict(title='Daily Gain'),
+        colorbar=dict(title='Daily Gain', tickfont=dict(color='#e8e8e8'), title_font=dict(color='#e8e8e8')),
         xgap=2, ygap=2,
     ))
 
@@ -264,21 +264,27 @@ def fig_contribution_calendar(df):
             month_labels_text.append(ts.strftime('%b'))
 
     fig.update_layout(
-        title=dict(text='Daily Hit Gains: Contribution Calendar (UTC)', font=dict(size=16, color='#333333')),
-        plot_bgcolor='white',
-        paper_bgcolor='white',
+        title=dict(text='Daily Hit Gains: Contribution Calendar (UTC)', font=dict(size=16, color='#e8e8e8'), x=0.5, xanchor='center'),
+        plot_bgcolor='#1a1a2e',
+        paper_bgcolor='#1a1a2e',
+        font=dict(family='sans-serif', color='#e8e8e8'),
         yaxis=dict(
             tickvals=[0, 1, 2, 3, 4, 5, 6],
             ticktext=['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
             autorange='reversed',
+            ticks='', showline=False, zeroline=False, showgrid=False,
+            color='#e8e8e8',
         ),
         xaxis=dict(
             tickvals=month_labels_x,
             ticktext=month_labels_text,
             side='top',
+            ticks='', showline=False, zeroline=False, showgrid=False,
+            color='#e8e8e8',
         ),
-        margin=dict(l=60, r=30, t=80, b=20),
-        height=250,
+        margin=dict(l=60, r=30, t=70, b=30),
+        width=1400,
+        height=320,
     )
     return fig
 
@@ -1542,7 +1548,9 @@ def main(csv_filepath, output_dir):
             f.write(build_embed_html(fig, title))
 
         png_path = os.path.join(output_dir, f'{slug}.png')
-        fig.write_image(png_path, width=1400, height=600, scale=2)
+        png_width = fig.layout.width or 1400
+        png_height = fig.layout.height or 600
+        fig.write_image(png_path, width=png_width, height=png_height, scale=2)
 
     print(f"Saved embed pages and PNGs to {output_dir}/")
 
