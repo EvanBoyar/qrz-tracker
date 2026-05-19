@@ -60,25 +60,38 @@ fi
 
 CSV_FILE="$SCRIPT_DIR/${QRZ_CALLSIGN}_QRZ_stats.csv"
 
-# Fetch QRZ page
-RESPONSE=$(curl --silent \
-    "https://www.qrz.com/db/${QRZ_CALLSIGN}" \
-    -H "Cookie: xf_session=${QRZ_SESSION_TOKEN}" \
-    -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0")
+QRZ_CURL_OPTS=(
+    --silent
+    -H "Cookie: xf_session=${QRZ_SESSION_TOKEN}"
+    -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0"
+)
 
-# Verify session is authenticated. QRZ sets cs_mycs to the callsign when logged in,
-# empty string when not. An unauthenticated page view inflates the lookup count.
-if echo "$RESPONSE" | grep -q 'var cs_mycs = "";'; then
-    log_msg "ERROR" "Session not authenticated. Would inflate lookup count. Halting."
+# Exit 2 signals session expiry; the workflow uses this to open a tracking issue.
+session_expired() {
+    log_msg "ERROR" "$1"
     notify "QRZ session expired. Update token"
     if [ "$CI" != "true" ]; then
         touch "$SENTINEL_FILE"
     fi
-    # Exit 2 signals session expiry (workflow uses this to create an Issue)
     exit 2
+}
+
+# Probe the homepage first. It does not count toward any callsign's Lookups,
+# so bailing here when the session is bad costs us zero inflation. The signal
+# is the presence of a /login anchor — QRZ renders it only for logged-out users.
+HOME_RESPONSE=$(curl "${QRZ_CURL_OPTS[@]}" "https://www.qrz.com/")
+if echo "$HOME_RESPONSE" | grep -qE 'href=["\x27]/login["\x27]'; then
+    session_expired "Homepage shows a /login link — session is not authenticated. Skipping profile fetch."
 fi
 
-# Extract lookup count
+# Profile-page positive check: the page must declare cs_mycs as the tracked
+# callsign. Empty, missing, or a different callsign all mean we are not the
+# authenticated owner and a recorded count would be inflated by this very hit.
+RESPONSE=$(curl "${QRZ_CURL_OPTS[@]}" "https://www.qrz.com/db/${QRZ_CALLSIGN}")
+if ! echo "$RESPONSE" | grep -qF "var cs_mycs = \"${QRZ_CALLSIGN}\";"; then
+    session_expired "Profile response did not declare cs_mycs=${QRZ_CALLSIGN}."
+fi
+
 COUNT=$(echo "$RESPONSE" | grep -oP '(?<=Lookups: )[\d,]+' | tr -d ',')
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")

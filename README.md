@@ -4,9 +4,9 @@ Tracks the cumulative lookup count on [my QRZ page](https://www.qrz.com/db/NR8E)
 
 ## How it works
 
-`qrzLookupTracker.sh` runs hourly (or as often as you'd like) via github actions. It authenticates to QRZ using a session cookie, verifies the session is valid (to avoid inflating the count with unauthenticated visits), records the current lookup count to a CSV, then regenerates all plots via `qrzHitsViz.py`.
+`qrzLookupTracker.sh` runs hourly (or as often as you'd like) via github actions. It authenticates to QRZ using a session cookie and verifies the session in two stages: first a probe to the QRZ homepage, which doesn't count toward any callsign's Lookups, and then a positive check on the profile response (the page must declare `cs_mycs` as the tracked callsign). Only after both pass does it record the current count to the CSV and regenerate plots via `qrzHitsViz.py`.
 
-If the session expires, a GitHub issue is raised.
+If the session expires, the workflow opens a GitHub issue (one at a time, no spam) and stops recording. To resume, rotate the `QRZ_SESSION_TOKEN` secret in repo Settings > Secrets. The next hourly run will pick up the new token, write the next data point, and auto-close the issue. No other manual steps needed.
 
 ## Forking
 It's pretty easy to fork. 

@@ -61,9 +61,18 @@ jobs:
           if [ "$EXISTING" = "0" ]; then
             gh issue create \
               --title "QRZ session token expired" \
-              --body "The QRZ session token is no longer valid. Update the \`QRZ_SESSION_TOKEN\` secret in repo Settings > Secrets to resume tracking." \
+              --body "The QRZ session token is no longer valid. Update the \`QRZ_SESSION_TOKEN\` secret in repo Settings > Secrets to resume tracking. This issue will auto-close on the next successful run." \
               --label "session-expiry"
           fi
+
+      - name: Close session-expiry issue on recovery
+        if: steps.tracker.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for num in $(gh issue list --label "session-expiry" --state open --json number --jq '.[].number'); do
+            gh issue close "$num" --comment "Session recovered; tracker resumed."
+          done
 
       - name: Commit CSV update
         if: steps.tracker.outcome == 'success'
