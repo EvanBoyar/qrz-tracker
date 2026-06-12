@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '0 * * * *'  # Every hour
   workflow_dispatch:       # Manual trigger
+    inputs:
+      simulate:
+        description: 'Simulate a failure (verifies the alerting path end-to-end)'
+        type: choice
+        options: ['none', 'expiry']
+        default: 'none'
 
 permissions:
   contents: write
@@ -45,33 +51,49 @@ jobs:
         env:
           QRZ_SESSION_TOKEN: ${{ secrets.QRZ_SESSION_TOKEN }}
           QRZ_CALLSIGN: ${{ secrets.QRZ_CALLSIGN }}
+          QRZ_SIMULATE: ${{ inputs.simulate }}
         run: |
+          set +e
           bash qrzLookupTracker.sh
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
         continue-on-error: true
 
-      - name: Create issue on session expiry
+      - name: Create issue on failure
         if: steps.tracker.outcome == 'failure'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXIT_CODE: ${{ steps.tracker.outputs.exit_code }}
         run: |
-          # Ensure the label exists
-          gh label create "session-expiry" --color "d73a4a" --description "QRZ session token needs renewal" 2>/dev/null || true
-          # Check if an open session-expiry issue already exists
-          EXISTING=$(gh issue list --label "session-expiry" --state open --json number --jq 'length')
+          # Exit 2 = session expiry; anything else = unexpected failure (e.g.
+          # exit 3, count parse failure). Distinct labels/wording so the issue
+          # tells the truth about what actually went wrong.
+          if [ "$EXIT_CODE" = "2" ]; then
+            LABEL="session-expiry"
+            TITLE="QRZ session token expired"
+            BODY="The QRZ session token is no longer valid. Update the \`QRZ_SESSION_TOKEN\` secret in repo Settings > Secrets to resume tracking. This issue will auto-close on the next successful run."
+            gh label create "$LABEL" --color "d73a4a" --description "QRZ session token needs renewal" 2>/dev/null || true
+          else
+            LABEL="tracker-failure"
+            TITLE="QRZ tracker failed (exit code ${EXIT_CODE:-unknown})"
+            BODY="The tracker failed for a reason other than session expiry (exit code ${EXIT_CODE:-unknown}) — likely a page-format change or network error. Check the run logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. This issue will auto-close on the next successful run."
+            gh label create "$LABEL" --color "e4a11b" --description "QRZ tracker failed for a non-expiry reason" 2>/dev/null || true
+          fi
+          EXISTING=$(gh issue list --label "$LABEL" --state open --json number --jq 'length')
           if [ "$EXISTING" = "0" ]; then
-            gh issue create \
-              --title "QRZ session token expired" \
-              --body "The QRZ session token is no longer valid. Update the \`QRZ_SESSION_TOKEN\` secret in repo Settings > Secrets to resume tracking. This issue will auto-close on the next successful run." \
-              --label "session-expiry"
+            gh issue create --title "$TITLE" --body "$BODY" --label "$LABEL"
           fi
 
-      - name: Close session-expiry issue on recovery
+      - name: Close failure issues on recovery
         if: steps.tracker.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for num in $(gh issue list --label "session-expiry" --state open --json number --jq '.[].number'); do
-            gh issue close "$num" --comment "Session recovered; tracker resumed."
+          for label in session-expiry tracker-failure; do
+            for num in $(gh issue list --label "$label" --state open --json number --jq '.[].number'); do
+              gh issue close "$num" --comment "Tracker recovered; resuming normal runs."
+            done
           done
 
       - name: Commit CSV update
@@ -82,6 +104,7 @@ jobs:
           git add *.csv
           git diff --cached --quiet && exit 0
           git commit -m "data: hourly QRZ lookup update"
+          git pull --rebase origin main
           git push
 
       - name: Generate visualizations

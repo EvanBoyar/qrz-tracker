@@ -76,6 +76,12 @@ session_expired() {
     exit 2
 }
 
+# Test hook: lets the workflow verify the expiry -> issue -> notification path
+# end-to-end without a real expired token.
+if [ "${QRZ_SIMULATE:-}" = "expiry" ]; then
+    session_expired "Simulated session expiry (QRZ_SIMULATE=expiry)."
+fi
+
 # Probe the homepage first. It does not count toward any callsign's Lookups,
 # so bailing here when the session is bad costs us zero inflation. The signal
 # is the presence of a /login anchor — QRZ renders it only for logged-out users.
@@ -93,6 +99,13 @@ if ! echo "$RESPONSE" | grep -qF "var cs_mycs = \"${QRZ_CALLSIGN}\";"; then
 fi
 
 COUNT=$(echo "$RESPONSE" | grep -oP '(?<=Lookups: )[\d,]+' | tr -d ',')
+
+# Exit 3 signals a parse failure: authenticated page, but no lookup count
+# found. Never append a row in that case — empty counts corrupt the CSV.
+if ! [[ "$COUNT" =~ ^[0-9]+$ ]]; then
+    log_msg "ERROR" "Authenticated page fetched, but could not parse a lookup count (got: '${COUNT}')."
+    exit 3
+fi
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 echo "${TIMESTAMP},${COUNT}" >> "$CSV_FILE"
