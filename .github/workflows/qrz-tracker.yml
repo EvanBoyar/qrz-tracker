@@ -2,7 +2,10 @@ name: QRZ Lookup Tracker
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Every hour
+    # TEMP: once daily during the fetch-rate dose-response test (24x fewer
+    # authenticated fetches). If the drip persists, the fetch isn't the cause.
+    # Restore to '0 * * * *' (hourly) when the test concludes.
+    - cron: '0 6 * * *'  # Once daily at 06:00 UTC
   workflow_dispatch:       # Manual trigger
     inputs:
       simulate:
