@@ -10,6 +10,11 @@ on:
         type: choice
         options: ['none', 'expiry']
         default: 'none'
+      mode:
+        description: 'Run mode (isolation experiments; scheduled runs use the TRACKER_MODE repo variable)'
+        type: choice
+        options: ['', 'normal', 'fetch-only', 'publish-only']
+        default: ''
 
 permissions:
   contents: write
@@ -34,6 +39,22 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      # Isolation-experiment switch (see plans/qrz contingency plan):
+      #   normal       - fetch QRZ + commit CSV + deploy (default)
+      #   fetch-only   - fetch QRZ, publish NOTHING (no commit/deploy; reading -> artifact)
+      #   publish-only - NO QRZ contact; heartbeat commit + deploy only
+      # Dispatch input wins; scheduled runs follow the TRACKER_MODE repo variable.
+      - name: Resolve run mode
+        id: mode
+        env:
+          INPUT_MODE: ${{ inputs.mode }}
+          VAR_MODE: ${{ vars.TRACKER_MODE }}
+        run: |
+          MODE="${INPUT_MODE:-${VAR_MODE:-normal}}"
+          case "$MODE" in normal|fetch-only|publish-only) ;; *) MODE=normal ;; esac
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Run mode: $MODE"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -48,6 +69,7 @@ jobs:
 
       - name: Run tracker
         id: tracker
+        if: steps.mode.outputs.mode != 'publish-only'
         env:
           QRZ_SESSION_TOKEN: ${{ secrets.QRZ_SESSION_TOKEN }}
           QRZ_CALLSIGN: ${{ secrets.QRZ_CALLSIGN }}
@@ -96,8 +118,18 @@ jobs:
             done
           done
 
+      # fetch-only: the reading leaves the runner ONLY as an artifact. No commit,
+      # no deploy, no public GitHub event for scraper fleets to react to.
+      - name: Upload reading artifact (fetch-only)
+        if: steps.mode.outputs.mode == 'fetch-only' && steps.tracker.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: reading-${{ github.run_id }}
+          path: '*.csv'
+          retention-days: 14
+
       - name: Commit CSV update
-        if: steps.tracker.outcome == 'success'
+        if: steps.mode.outputs.mode == 'normal' && steps.tracker.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -107,19 +139,32 @@ jobs:
           git pull --rebase origin main
           git push
 
+      # publish-only: produce the same public GitHub activity as a real run
+      # (a push + a Pages deploy) while never contacting qrz.com.
+      - name: Heartbeat commit (publish-only)
+        if: steps.mode.outputs.mode == 'publish-only'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .heartbeat
+          git add .heartbeat
+          git commit -m "data: hourly QRZ lookup update"
+          git pull --rebase origin main
+          git push
+
       - name: Generate visualizations
-        if: steps.tracker.outcome == 'success'
+        if: (steps.mode.outputs.mode == 'normal' && steps.tracker.outcome == 'success') || steps.mode.outputs.mode == 'publish-only'
         env:
           QRZ_CALLSIGN: ${{ secrets.QRZ_CALLSIGN }}
         run: python3 qrzHitsViz.py
 
       - name: Upload Pages artifact
-        if: steps.tracker.outcome == 'success'
+        if: (steps.mode.outputs.mode == 'normal' && steps.tracker.outcome == 'success') || steps.mode.outputs.mode == 'publish-only'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
       - name: Deploy to GitHub Pages
-        if: steps.tracker.outcome == 'success'
+        if: (steps.mode.outputs.mode == 'normal' && steps.tracker.outcome == 'success') || steps.mode.outputs.mode == 'publish-only'
         id: deploy
         uses: actions/deploy-pages@v4
