@@ -2,7 +2,9 @@ name: QRZ Lookup Tracker
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Every hour
+    # Hourly at :32 — an off-peak minute (rolled randomly once); top-of-hour
+    # schedules get silently delayed/dropped when GitHub's cron queue is busy.
+    - cron: '32 * * * *'
   workflow_dispatch:       # Manual trigger
     inputs:
       simulate:
@@ -37,7 +39,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy-retry.outputs.page_url }}
     steps:
       # Isolation-experiment switch (see plans/qrz contingency plan):
       #   normal       - fetch QRZ + commit CSV + deploy (default)
@@ -57,6 +59,11 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Branch tip, not the SHA pinned at run creation: a re-run of a
+          # partially-failed job otherwise starts from a stale base and its
+          # CSV push conflicts with attempt 1's own push (seen 2026-07-02).
+          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -164,7 +171,17 @@ jobs:
         with:
           path: _site
 
+      # Transient "Deployment failed, try again later" errors on GitHub's side
+      # (e.g. the 2026-07-02 Pages capacity incident) fail this step ~5s in;
+      # one retry absorbs them. Data is already committed by this point, so a
+      # deploy failure only leaves the site stale until the next run.
       - name: Deploy to GitHub Pages
         if: (steps.mode.outputs.mode == 'normal' && steps.tracker.outcome == 'success') || steps.mode.outputs.mode == 'publish-only'
         id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Retry deploy to GitHub Pages
+        if: steps.deploy.outcome == 'failure'
+        id: deploy-retry
         uses: actions/deploy-pages@v4
