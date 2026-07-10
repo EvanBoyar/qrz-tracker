@@ -2,9 +2,10 @@ name: QRZ Lookup Tracker
 
 on:
   schedule:
-    # Hourly at :32 — an off-peak minute (rolled randomly once); top-of-hour
-    # schedules get silently delayed/dropped when GitHub's cron queue is busy.
-    - cron: '32 * * * *'
+    # Hourly at :51 — rolled randomly once from windows >=5 min away from any
+    # quarter mark; GitHub's cron queue is congested at :00/:15/:30/:45 and
+    # silently delays or drops schedules there (and in the spillover just after).
+    - cron: '51 * * * *'
   workflow_dispatch:       # Manual trigger
     inputs:
       simulate:
